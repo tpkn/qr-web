@@ -1,6 +1,6 @@
 <template>
-	<img v-if="QRCodeString" id="qrcode" :title="is_visible_controls ? 'Hide Menu' : 'Show Menu'" :src="QRSvgBase64" @click="toggleHideControls">
-	<div :class="['controls', { 'hidden': !is_visible_controls }]">
+	<img v-if="QRCodeString" id="qrcode" :src="QRSvgBase64" :title="settings.show_controls ? 'Hide Menu' : 'Show Menu'" @click="toggleHideControls">
+	<div :class="['controls', { 'hidden': !settings.show_controls }]">
 		<ul>
 			<li>
 				<div class="mode-selector">
@@ -55,9 +55,9 @@
 </template>
 <script setup>
 	import QRCode from 'qrcode';
-	import { onMounted, ref, reactive, computed, nextTick, watch } from 'vue';
+	import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue';
 	
-	const saved_settings = JSON.parse(localStorage.getItem('tpkn_me_QR_settings') || '{}');
+	const saved_settings = JSON.parse(localStorage.getItem('qr_settings') || '{}');
 	const settings = reactive({
 		text: saved_settings.text ?? '',
 		mode: saved_settings.mode ?? 'text',
@@ -70,7 +70,8 @@
 			name: saved_settings.otpauth?.name ?? '',
 			login: saved_settings.otpauth?.login ?? '',
 			secret: saved_settings.otpauth?.secret ?? ''
-		}
+		},
+		show_controls: true
 	});
 	
 	// Text
@@ -85,7 +86,16 @@
 	// Escape some symbols in credentials
 	const wifiSSIDEscaped = computed(() => settings.wifi.ssid.replace(/[\\;:,"]/g, i => '\\' + i));
 	const wifiPasswordEscaped = computed(() => settings.wifi.password.replace(/[\\;:,"]/g, i => '\\' + i));
-	const otpauthNameEscaped = computed(() => settings.otpauth.name.replace(/[ @:/?&=#]/g, c => ({' ':'%20','@':'%40',':':'%3A','/':'%2F','?':'%3F','&':'%26','=':'%3D','#':'%23'})[c]));
+	const otpauthNameEscaped = computed(() => settings.otpauth.name.replace(/[ @:/?&=#]/g, c => ({
+		' ': '%20',
+		'@': '%40',
+		':': '%3A',
+		'/': '%2F',
+		'?': '%3F',
+		'&': '%26',
+		'=': '%3D',
+		'#': '%23'
+	})[c]));
 	
 	const QRSvgBase64 = ref('');
 	const QRCodeString = computed(() => {
@@ -118,9 +128,9 @@
 	}
 	
 	// Focus
-	async function focusInputField(current) {
+	async function focusInputField() {
 		await nextTick();
-		switch (current) {
+		switch (settings.mode) {
 			case 'text':
 				textInputRef.value?.focus();
 				break;
@@ -133,26 +143,21 @@
 		}
 	}
 	
+	function toggleHideControls() {
+		settings.show_controls = !settings.show_controls;
+	}
+	
 	// Update QR if final string changed
 	watch(QRCodeString, redrawQRImage);
 	// Focus first field on section switch
 	watch(() => settings.mode, focusInputField);
+	watch(() => settings.show_controls, focusInputField);
 	// Save settings to localStorage if changed
 	watch(settings, (current) => {
-		localStorage.setItem('tpkn_me_QR_settings', JSON.stringify(current));
+		localStorage.setItem('qr_settings', JSON.stringify(current));
 	}, { deep: true });
 	
 	onMounted(redrawQRImage);
-	
-	/**
-	 * ...
-	 */
-	const is_visible_controls = ref(true);
-	
-	function toggleHideControls() {
-		is_visible_controls.value = !is_visible_controls.value;
-		nextTick(() => textInputRef.value?.focus());
-	}
 </script>
 <style lang="scss">
 	@use '@scss/main.scss';
