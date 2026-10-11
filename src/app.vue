@@ -1,5 +1,5 @@
 <template>
-	<img v-if="QRCodeString" id="qrcode" :src="QRSvgBase64" :title="settings.show_controls ? 'Hide Menu' : 'Show Menu'" @click="toggleHideControls">
+	<img v-if="QRCodeString" id="qrcode" :src="QRSvgBase64" :title="settings.show_controls ? 'Hide Menu' : 'Show Menu'" @click="settings.show_controls = !settings.show_controls">
 	<div :class="['controls', { 'hidden': !settings.show_controls }]">
 		<ul>
 			<li>
@@ -128,30 +128,25 @@
 	}
 	
 	// Focus
-	async function focusInputField() {
+	async function focusBlurInputFields() {
 		await nextTick();
 		switch (settings.mode) {
 			case 'text':
-				textInputRef.value?.focus();
+				settings.show_controls ? textInputRef.value?.focus() : textInputRef.value?.blur();
 				break;
 			case 'wifi':
-				wifiSSIDRef.value?.focus();
+				settings.show_controls ? wifiSSIDRef.value?.focus() : wifiSSIDRef.value?.blur();
 				break;
 			case 'otpauth':
-				otpauthNameRef.value?.focus();
+				settings.show_controls ? otpauthNameRef.value?.focus() : otpauthNameRef.value?.blur();
 				break;
 		}
 	}
 	
-	function toggleHideControls() {
-		settings.show_controls = !settings.show_controls;
-	}
-	
 	// Update QR if final string changed
 	watch(QRCodeString, redrawQRImage);
-	// Focus first field on section switch
-	watch(() => settings.mode, focusInputField);
-	watch(() => settings.show_controls, focusInputField);
+	// Focus first field on section switch / menu opened
+	watch(() => [ settings.mode, settings.show_controls ], focusBlurInputFields);
 	// Save settings to localStorage if changed
 	watch(settings, (current) => {
 		localStorage.setItem('qr_settings', JSON.stringify(current));
